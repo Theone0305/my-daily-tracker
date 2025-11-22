@@ -1,78 +1,13 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DailyLog - 每日跟踪器</title>
-    <!-- 引入 Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 设置 Tailwind 配置，确保可以使用自定义颜色和 radial-progress -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                    // 自定义 radial-progress CSS 变量
-                    colors: {
-                        'radial-progress-color': 'currentColor',
-                        'radial-progress-track-color': '#e5e7eb', // gray-200
-                    }
-                }
-            },
-            plugins: [
-                // 启用 Tailwind CSS 动画
-                require('tailwindcss/defaultConfig')
-            ],
-            corePlugins: {
-                preflight: true, // 启用预设样式重置
-            }
-        }
-    </script>
-    <style>
-        /* 引入 Inter 字体 */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        
-        /* 自定义 radial-progress 样式 */
-        .radial-progress {
-            display: inline-grid;
-            place-content: center;
-            font-size: var(--size, 2rem);
-            height: var(--size, 2rem);
-            width: var(--size, 2rem);
-            border-radius: 9999px;
-            background-color: var(--radial-progress-track-color, #e5e7eb);
-            background-image: conic-gradient(
-                var(--radial-progress-color, #4f46e5) calc(var(--value) * 1%),
-                var(--radial-progress-track-color, #e5e7eb) 0
-            );
-            color: var(--radial-progress-color, #4f46e5);
-        }
-        .radial-progress::before {
-            content: attr(style);
-            display: none;
-        }
-    </style>
-</head>
-<body class="bg-slate-50">
-    <noscript>您需要启用 JavaScript 才能运行此应用。</noscript>
-    <!-- React 应用的挂载点 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>my-daily-tracker</title>
+  </head>
+  <body>
     <div id="root"></div>
-
-    <!-- 生产环境下的 React 和 ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- 引入 Babel 来转换 JSX，仅适用于简单的单文件部署，在 Vercel 上使用 Vite/Webpack 会更专业 -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- 导入您的主应用组件 -->
-    <script type="text/babel" data-type="module" src="./src/DailyTracker.jsx"></script>
-    
-    <script type="text/babel">
-        // 渲染主应用
-        const App = window.App.default; // 假设 DailyTracker.jsx 中的 export default App 挂载到了 window.App
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
-</body>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
