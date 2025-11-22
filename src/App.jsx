@@ -38,6 +38,8 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
+// 注意：为了部署到Vercel，这里的Firebase配置必须使用真实值或环境变量。
+// 这里的配置是示例，部署前应替换为您的真实Firebase项目配置。
 const firebaseConfig = {
   apiKey: "AIzaSyAVlVw-5ibKUchfWv01BXDAwlI55mEQGAw",
   authDomain: "daily-to-do-96685.firebaseapp.com",
@@ -50,7 +52,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'my-daily-tracker';
+// 在部署环境中，我们无法访问 __app_id，使用一个固定值作为默认。
+const appId = 'daily-tracker-app'; 
 
 // --- Mood Definitions ---
 const MOODS = [
@@ -234,10 +237,10 @@ const Dashboard = ({ user }) => {
   // Utility function to get the correct Firestore document reference
   const getDailyLogDocRef = (shareCode, dateStr, userId) => {
     if (shareCode) {
-      // 公共共享路径：数据保存在所有用户都可以访问的公共集合中
+      // 公共共享路径
       return doc(db, 'artifacts', appId, 'public', 'data', 'shared_logs', `${shareCode}_${dateStr}`);
     } else {
-      // 私人用户路径：数据保存在只有当前用户可以访问的私人集合中
+      // 私人用户路径
       return doc(db, 'artifacts', appId, 'users', userId, 'dailyLogs', dateStr);
     }
   };
@@ -273,7 +276,7 @@ const Dashboard = ({ user }) => {
     });
 
     return () => unsubscribe();
-  }, [user, dateStr, shareCode]); // 依赖项包括 shareCode，确保切换共享码时重新加载
+  }, [user, dateStr, shareCode]); 
 
   // Save Data Helper
   const saveData = async (newTodos, newShopping, newMood) => {
@@ -636,25 +639,19 @@ const Dashboard = ({ user }) => {
 };
 
 // --- Main Root ---
+// 在真实的部署环境中，我们通常会使用ReactDOM来渲染这个App组件。
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
+    // 在Vercel环境中，我们不能使用 __initial_auth_token，直接尝试匿名登录或使用正常登录流程。
     const initAuth = async () => {
-      // 检查是否有自定义认证令牌，如果Canvas环境提供了，则优先使用它进行登录
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          try { 
-              await signInWithCustomToken(auth, __initial_auth_token); 
-          } catch (e) { 
-              console.error("Custom token sign-in failed, falling back to anonymous:", e); 
-              // 如果令牌登录失败，则尝试匿名登录
-              try { await signInAnonymously(auth); } catch(err) { console.error("Anonymous sign-in failed:", err); }
-          }
-      } else {
-         // 如果没有令牌，则匿名登录
-         try { await signInAnonymously(auth); } catch(err) { console.error("Anonymous sign-in failed:", err); }
-      }
+        try { 
+            await signInAnonymously(auth); 
+        } catch(err) { 
+            console.error("Anonymous sign-in failed:", err); 
+        }
       
       // 设置认证状态监听器
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -664,7 +661,7 @@ export default function App() {
       return () => unsubscribe();
     };
     initAuth();
-  }, []); // 仅在组件挂载时运行一次
+  }, []); 
 
   if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" /></div>;
   return user ? <Dashboard user={user} /> : <AuthForm setUser={setUser} />;
