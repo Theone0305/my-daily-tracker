@@ -51,7 +51,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'my-daily-tracker';
-// 给你的应用起个名字，用于区分数据存储路径
 
 // --- Mood Definitions ---
 const MOODS = [
@@ -154,6 +153,60 @@ const AuthForm = ({ setUser }) => {
   );
 };
 
+// --- Skeletal Loader Component for better UX ---
+const SkeletalLoader = () => (
+  <div className="space-y-6 animate-pulse">
+    {/* Mood Skeleton */}
+    <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div className="h-4 bg-gray-200 rounded w-1/4 mb-6"></div>
+      <div className="grid grid-cols-5 gap-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-100 h-20">
+            <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+            <div className="h-2 bg-gray-300 rounded w-3/4"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Tabs Skeleton */}
+    <div className="flex gap-2 bg-gray-200/50 p-1 rounded-xl">
+      <div className="flex-1 py-3 px-4 rounded-lg bg-gray-300 h-10"></div>
+      <div className="flex-1 py-3 px-4 rounded-lg bg-gray-300 h-10"></div>
+    </div>
+
+    {/* List Section Skeleton */}
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[400px]">
+      {/* Header/Progress Area */}
+      <div className="p-6 border-b border-gray-100 bg-gray-50">
+        <div className="flex justify-between items-end mb-4">
+          <div className="h-5 bg-gray-300 rounded w-1/3"></div>
+          <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+        </div>
+        <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-full bg-gray-300 w-[50%]"></div>
+        </div>
+      </div>
+      
+      {/* Input Area */}
+      <div className="p-4 border-b border-gray-100 flex gap-2">
+        <div className="flex-1 px-4 py-3 bg-gray-100 rounded-xl h-12"></div>
+        <div className="w-12 h-12 bg-gray-300 rounded-xl"></div>
+      </div>
+
+      {/* List Content Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-gray-100">
+            <div className="w-6 h-6 bg-gray-300 rounded-lg"></div>
+            <div className="h-4 bg-gray-300 rounded w-2/3"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 // --- Main Dashboard Component ---
 const Dashboard = ({ user }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -178,20 +231,28 @@ const Dashboard = ({ user }) => {
     if (savedCode) setShareCode(savedCode);
   }, []);
 
+  // Utility function to get the correct Firestore document reference
+  const getDailyLogDocRef = (shareCode, dateStr, userId) => {
+    if (shareCode) {
+      // 公共共享路径：数据保存在所有用户都可以访问的公共集合中
+      return doc(db, 'artifacts', appId, 'public', 'data', 'shared_logs', `${shareCode}_${dateStr}`);
+    } else {
+      // 私人用户路径：数据保存在只有当前用户可以访问的私人集合中
+      return doc(db, 'artifacts', appId, 'users', userId, 'dailyLogs', dateStr);
+    }
+  };
+
+
   // Data Fetching
   useEffect(() => {
-    if (!user) return;
+    if (!user || !user.uid) return; 
+
+    // 在每次切换日期或共享码时，重新进入加载状态
     setLoadingData(true);
 
-    let docRef;
-    if (shareCode) {
-      // Public Shared Path: artifacts/{appId}/public/data/shared_logs/{shareCode}_{dateStr}
-      docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_logs', `${shareCode}_${dateStr}`);
-    } else {
-      // Private User Path: artifacts/{appId}/users/{userId}/dailyLogs/{dateStr}
-      docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'dailyLogs', dateStr);
-    }
+    const docRef = getDailyLogDocRef(shareCode, dateStr, user.uid);
     
+    // 实时监听数据
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -199,30 +260,28 @@ const Dashboard = ({ user }) => {
         setShoppingList(data.shoppingList || []);
         setMood(data.mood || null);
       } else {
+        // 文档不存在时，设置为空数组/null，确保切换到新共享空间时是空的
         setTodos([]);
         setShoppingList([]);
         setMood(null);
       }
-      setLoadingData(false);
+      // 无论数据是否存在，只要第一次快照返回，就结束加载状态
+      setLoadingData(false); 
     }, (error) => {
       console.error("Error fetching data:", error);
       setLoadingData(false);
     });
 
     return () => unsubscribe();
-  }, [user, dateStr, shareCode]);
+  }, [user, dateStr, shareCode]); // 依赖项包括 shareCode，确保切换共享码时重新加载
 
   // Save Data Helper
   const saveData = async (newTodos, newShopping, newMood) => {
-    if (!user) return;
+    if (!user || !user.uid) return;
     try {
-      let docRef;
-      if (shareCode) {
-        docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_logs', `${shareCode}_${dateStr}`);
-      } else {
-        docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'dailyLogs', dateStr);
-      }
-
+      const docRef = getDailyLogDocRef(shareCode, dateStr, user.uid);
+      
+      // setDoc ({ merge: true }) 会在文档不存在时自动创建它，无需提前检查。
       await setDoc(docRef, {
         todos: newTodos !== undefined ? newTodos : todos,
         shoppingList: newShopping !== undefined ? newShopping : shoppingList,
@@ -422,10 +481,9 @@ const Dashboard = ({ user }) => {
           </button>
         </div>
 
+        {/* Conditional Content (Data-Dependent) */}
         {loadingData ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="animate-spin text-indigo-500 w-8 h-8" />
-          </div>
+          <SkeletalLoader />
         ) : (
           <>
             {/* Mood Section */}
@@ -584,9 +642,21 @@ export default function App() {
 
   useEffect(() => {
     const initAuth = async () => {
+      // 检查是否有自定义认证令牌，如果Canvas环境提供了，则优先使用它进行登录
       if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-         try { await signInWithCustomToken(auth, __initial_auth_token); } catch (e) { console.error(e); }
+          try { 
+              await signInWithCustomToken(auth, __initial_auth_token); 
+          } catch (e) { 
+              console.error("Custom token sign-in failed, falling back to anonymous:", e); 
+              // 如果令牌登录失败，则尝试匿名登录
+              try { await signInAnonymously(auth); } catch(err) { console.error("Anonymous sign-in failed:", err); }
+          }
+      } else {
+         // 如果没有令牌，则匿名登录
+         try { await signInAnonymously(auth); } catch(err) { console.error("Anonymous sign-in failed:", err); }
       }
+      
+      // 设置认证状态监听器
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
         setAuthLoading(false);
@@ -594,7 +664,7 @@ export default function App() {
       return () => unsubscribe();
     };
     initAuth();
-  }, []);
+  }, []); // 仅在组件挂载时运行一次
 
   if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" /></div>;
   return user ? <Dashboard user={user} /> : <AuthForm setUser={setUser} />;
